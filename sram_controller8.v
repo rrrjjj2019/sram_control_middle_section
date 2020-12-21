@@ -45,10 +45,21 @@ module sram_controller(
 	// ============================================
 	// IRSRAM (Real SRAM)
 	// ============================================
-	output	reg								CEN_ir,
-	output	reg	[`SRAM_NUM - 1 : 0]			WEN_ir,
-	output	reg	[7:0]						A_ir,
-	output	reg	[`SRAM_NUM * 16 - 1 : 0]	D_ir,
+	input    [`SRAM_NUM * 16 - 1 : 0]	Q1_ir,
+	input    [`SRAM_NUM * 16 - 1 : 0]	Q2_ir,
+	output	reg								CEN1_ir,
+	output	reg	[`SRAM_NUM - 1 : 0]			WEN1_ir,
+
+	output	reg								CEN2_ir,
+	output	reg	[`SRAM_NUM - 1 : 0]			WEN2_ir,
+
+	output	reg	[7 - 1 : 0]	    			A1_ir,
+	output	reg	[`SRAM_NUM * 16 - 1 : 0]	D1_ir,
+
+	output	reg	[7 - 1 : 0]					A2_ir,
+	output	reg	[`SRAM_NUM * 16 - 1 : 0]	D2_ir,
+	
+
 
 	// ============================================
 	// ORSRAM (Real SRAM)
@@ -155,16 +166,22 @@ reg		[`CHANNEL_OUT * 72 - 1 : 0]	weight_in_tmp;
 reg 	[`CHANNEL_OUT * 16 - 1 : 0]	data_in_tmp2;
 reg 	[`CHANNEL_OUT * 8 - 1 : 0]	data_in_tmp2_reg;
 
-reg		[7:0]						A_ir_reg;
+reg		[6 : 0]						A1_ir_reg;
+reg		[6 : 0]						A2_ir_reg;
+
 
 reg		[`SRAM_NUM * 16 - 1 : 0]	ir_in_tmp;
 reg		[`SRAM_NUM * 16 - 1 : 0]	ir_in_tmp_reg;
+reg 	[`SRAM_NUM * 8 - 1 : 0]		IRSRAM_hold;
+reg		[`SRAM_NUM * 8 - 1 : 0]		IRSRAM_hold_reg;
 
 reg		[6:0]						A_or_reg;
 
 reg		[`CHANNEL_OUT * 16 - 1 : 0]	or_in_tmp;
 reg		[`CHANNEL_OUT * 16 - 1 : 0]	or_in_tmp_reg;
 
+reg	    [`SRAM_NUM * 16 - 1 : 0]	D2_ir_reg;
+reg	    [`SRAM_NUM * 16 - 1 : 0]	D1_ir_reg;
 
 reg	    [`SRAM_NUM - 1 : 0]			RENA_1;
 reg	    [`SRAM_NUM - 1 : 0]			RENB_1;
@@ -175,6 +192,15 @@ reg                             	start_cnt_FSM0_middleSection;
 reg 	[12 - 1 : 0]                pxl_cnt_FSM0_middleSection;
 reg     [1 : 0]                     curr_state_FSM0_middleSection;
 reg     [1 : 0]						next_state_FSM0_middleSection;
+
+reg                             	start_cnt_FSM1_middleSection;
+reg 	[12 - 1 : 0]                pxl_cnt_FSM1_middleSection;
+reg     [8 - 1 : 0]					col_cnt_FSM1_middleSection;
+reg     [4 - 1 : 0]					row_cnt_FSM1_middleSection;
+reg     [4 - 1 : 0]                 curr_state_FSM1_middleSection;
+reg     [4 - 1 : 0]					next_state_FSM1_middleSection;
+reg  								start_shift_FSM1_middleSection;
+reg     [8 - 1 : 0]	                shift_cnt_FSM1_middleSection;
 
 always@(posedge clk or negedge rst_n) begin
 	if(!rst_n) begin
@@ -457,7 +483,7 @@ always@(*) begin
 			next_state_FSM0_middleSection = 0;
 		end
 		default: begin
-			next_state0 = curr_state0;
+			next_state_FSM0_middleSection = curr_state_FSM0_middleSection;
 		end
 	endcase
 end
@@ -532,13 +558,13 @@ always@(posedge clk or negedge rst_n) begin
 	end
 	else if(FSM_flag == `ACTIVATE_MIDDLE_FSM1) begin
 		case(curr_state_FSM1_middleSection) //synopsys parallel_case
-			5'd0: begin
+			4'd0: begin
 				start_shift_FSM1_middleSection <= #1 0;
 			end
-			5'd1: begin
+			4'd1: begin
 				start_shift_FSM1_middleSection <= #1 start_shift_FSM1_middleSection;
 			end
-			5'd2: begin
+			4'd2: begin
 				if(pxl_cnt_FSM1_middleSection == `COL) begin
 					start_shift_FSM1_middleSection <= #1 1;
 				end
@@ -589,10 +615,10 @@ end
 always@(*) begin
 	next_state_FSM1_middleSection = 0;
 	case(curr_state_FSM1_middleSection) //synopsys parallel_case
-		5'd0: begin
+		4'd0: begin
 			next_state_FSM1_middleSection = 1;
 		end
-		5'd1: begin
+		4'd1: begin
 			if(row_cnt_FSM1_middleSection == 1) begin
 				next_state_FSM1_middleSection = 3;
 			end
@@ -600,7 +626,7 @@ always@(*) begin
 				next_state_FSM1_middleSection = 2;
 			end
 		end
-		5'd2: begin
+		4'd2: begin
 			if(pxl_cnt_FSM1_middleSection == `COL) begin
 				next_state_FSM1_middleSection = 1;
 			end
@@ -608,13 +634,13 @@ always@(*) begin
 				next_state_FSM1_middleSection = 2;
 			end
 		end
-		5'd3: begin
+		4'd3: begin
 			next_state_FSM1_middleSection = 4;
 		end
-		5'd4: begin
+		4'd4: begin
 			next_state_FSM1_middleSection = 5;
 		end
-		5'd5: begin
+		4'd5: begin
 			if(shift_cnt_FSM1_middleSection == `COL - 1) begin
 				next_state_FSM1_middleSection = 6;
 			end
@@ -622,24 +648,24 @@ always@(*) begin
 				next_state_FSM1_middleSection = 4;
 			end
 		end
-		5'd6: begin
+		4'd6: begin
 			if(pxl_cnt_FSM1_middleSection >= `COL + 2 + `COL * (`ROW - 2) - 1) begin
-				next_state_FSM1_middleSection = 16;
+				next_state_FSM1_middleSection = 10;
 			end
-			else if(row_cnt1[0]) begin
+			else if(row_cnt_FSM1_middleSection[0]) begin
 				next_state_FSM1_middleSection = 3;
 			end
 			else begin
 				next_state_FSM1_middleSection = 7;
 			end
 		end
-		5'd7: begin
+		4'd7: begin
 			next_state_FSM1_middleSection = 8;
 		end
-		5'd8: begin
+		4'd8: begin
 			next_state_FSM1_middleSection = 9;
 		end
-		5'd9: begin
+		4'd9: begin
 			if(shift_cnt_FSM1_middleSection == `COL - 1) begin
 				next_state_FSM1_middleSection = 6;
 			end
@@ -647,8 +673,8 @@ always@(*) begin
 				next_state_FSM1_middleSection = 8;
 			end
 		end
-		5'd16: begin
-			next_state_FSM1_middleSection = curr_state_FSM1_middleSection;
+		4'd10: begin
+			next_state_FSM1_middleSection = 0;
 		end
 		default: begin
 			next_state_FSM1_middleSection = 0;
@@ -1247,7 +1273,7 @@ always@(*) begin
 	next_state_ir = 0;
 	case(curr_state_ir)
 		3'd0: begin
-			if(pxl_cnt0 == (`ROW-2) * `COL - 1) begin
+			if(pxl_cnt0==(`ROW-2)*`COL-1) begin
 				next_state_ir = 1;
 			end
 			else begin
@@ -1255,29 +1281,35 @@ always@(*) begin
 			end
 		end
 		3'd1: begin
-			if(col_cnt0 == `COL - 2) begin
-				next_state_ir = 2;
+			if(pxl_cnt0==(`ROW-1)*`COL-1-1) begin
+				next_state_ir = 3;
 			end
 			else begin
-				next_state_ir = 1;
+				next_state_ir = 2;
 			end
 		end
 		3'd2: begin
-			next_state_ir = 3;
+			next_state_ir = 1;
 		end
 		3'd3: begin
 			next_state_ir = 4;
 		end
 		3'd4: begin
-			if(col_cnt0 == `COL - 1) begin
-				next_state_ir = 6;
+			next_state_ir = 5;
+		end
+		3'd5: begin
+			next_state_ir = 6;
+		end
+		3'd6: begin
+			if(pxl_cnt0==(`ROW)*(`COL)-1) begin// last pixel
+				next_state_ir = 7;
 			end
 			else begin
 				next_state_ir = 5;
 			end
 		end
-		3'd5: begin
-			next_state_ir = 4;
+		3'd7:begin
+				next_state_ir = 0;
 		end
 		default: begin
 			next_state_ir = 0;
@@ -1896,6 +1928,43 @@ always@(*) begin
 			end
 		endcase
 	end
+	else if (FSM_flag == `ACTIVATE_MIDDLE_FSM1) begin
+		case (curr_state_FSM1_middleSection)
+			4'd0: begin
+				AB_1 = {12{1'b1}};
+			end
+			4'd1: begin
+				AB_1 = AB_1_reg;
+			end
+			4'd2: begin
+				AB_1 = AB_1_reg + 1;
+			end
+			4'd3: begin
+				AB_1 = AB_1_reg + 1;
+			end
+			4'd4: begin
+				AB_1 = AB_1_reg + 1;
+			end
+			4'd5: begin
+				AB_1 = AB_1_reg;
+			end
+			4'd6: begin
+				AB_1 = AB_1_reg;
+			end
+			4'd7: begin
+				AB_1 = AB_1_reg + 1;
+			end
+			4'd8: begin
+				AB_1 = AB_1_reg + 1;
+			end
+			4'd9: begin
+				AB_1 = AB_1_reg;
+			end
+			default: begin
+				AB_1 = AB_1_reg;
+			end
+		endcase
+	end
 	else begin
 		AB_1 = {12{1'b1}};
 	end
@@ -2461,33 +2530,42 @@ always@(*) begin
 	if(FSM_flag[0]) begin
 		case(curr_state_ir)
 			3'd0: begin
-				CEN_ir = ~1'b0;
+				CEN1_ir = ~1'b1;
+				CEN2_ir = ~1'b1;
 			end
 			3'd1: begin
-				CEN_ir = ~1'b1;
+				CEN1_ir = ~1'b1;
+				CEN2_ir = ~1'b1;
 			end
 			3'd2: begin
-				CEN_ir = ~1'b1;
+				CEN1_ir = ~1'b1;
+				CEN2_ir = ~1'b1;
 			end
 			3'd3: begin
-				CEN_ir = ~1'b1;
+				CEN1_ir = ~1'b1;
+				CEN2_ir = ~1'b1;
 			end
 			3'd4: begin
-				CEN_ir = ~1'b1;
+				CEN1_ir = ~1'b1;
+				CEN2_ir = ~1'b1;
 			end
 			3'd5: begin
-				CEN_ir = ~1'b1;
+				CEN1_ir = ~1'b1;
+				CEN2_ir = ~1'b1;
 			end
 			3'd6: begin
-				CEN_ir = ~1'b0;
+				CEN1_ir = ~1'b1;
+				CEN2_ir = ~1'b1;
 			end
 			default: begin
-				CEN_ir = ~1'b0;
+				CEN1_ir = ~1'b1;
+				CEN2_ir = ~1'b1;
 			end
 		endcase
 	end
 	else begin
-		CEN_ir = ~1'b0;
+		CEN1_ir = ~1'b1;
+		CEN2_ir = ~1'b1;
 	end
 end
 
@@ -2497,129 +2575,260 @@ end
 always@(*) begin
 	if(FSM_flag[0]) begin
 		case(curr_state_ir)
+			3'd0: begin
+				WEN1_ir = ~{32{1'b0}};
+				WEN2_ir = ~{32{1'b0}};
+			end
+			3'd1: begin
+				WEN1_ir = ~{32{1'b1}};
+				WEN2_ir = ~{32{1'b0}};
+			end
+			3'd2: begin
+				WEN1_ir = ~{32{1'b0}};
+				WEN2_ir = ~{32{1'b1}};
+			end
+			3'd3: begin
+				WEN1_ir = ~{32{1'b0}};
+				WEN2_ir = ~{32{1'b0}};
+			end
+			3'd4: begin
+				WEN1_ir = ~{32{1'b0}};
+				WEN2_ir = ~{32{1'b1}};
+			end
+			3'd5: begin
+				WEN1_ir = ~{32{1'b1}};
+				WEN2_ir = ~{32{1'b0}};
+			end
+			3'd6: begin
+				WEN1_ir = ~{32{1'b0}};
+				WEN2_ir = ~{32{1'b1}};
+			end
+			3'd7: begin
+				WEN1_ir = ~{32{1'b0}};
+				WEN2_ir = ~{32{1'b0}};
+			end
 			default: begin
-				WEN_ir = ~1'b1;
+				WEN1_ir = ~{32{1'b0}};
+				WEN2_ir = ~{32{1'b0}};
 			end
 		endcase
 	end
 	else begin
-		WEN_ir = ~1'b1;
+		WEN1_ir = ~{32{1'b0}};
+		WEN2_ir = ~{32{1'b0}};
 	end
 end
 
-// ============================================
-// A_ir
-// ============================================
-always@(posedge clk or negedge rst_n) begin
-	if(!rst_n) begin
-		A_ir_reg <= #1 0;
-	end
-	else begin
-		A_ir_reg <= #1 A_ir;
-	end
-end
-always@(*) begin
-	if(FSM_flag[0]) begin
-		case(curr_state_ir)
-			3'd0: begin
-				A_ir = `COL;
-			end
-			3'd1: begin
-				A_ir = A_ir_reg - 1;
-			end
-			3'd2: begin
-				A_ir = A_ir_reg - 1;
-			end
-			3'd3: begin
-				A_ir = A_ir_reg;
-			end
-			3'd4: begin
-				A_ir = A_ir_reg + 1;
-			end
-			3'd5: begin
-				A_ir = A_ir_reg + 1;
-			end
-			3'd6: begin
-				A_ir = `COL;
-			end
-			default: begin
-				A_ir = `COL;
-			end
-		endcase
-	end
-	else begin
-		A_ir = `COL;
-	end
-end
 
 // ============================================
 // ir_in_tmp
 // ============================================
 always@(posedge clk or negedge rst_n) begin
 	if(!rst_n) begin
-		ir_in_tmp_reg <= #1 0;
+		IRSRAM_hold_reg <= #1 0;
 	end
 	else begin
-		ir_in_tmp_reg <= #1 ir_in_tmp;
+		IRSRAM_hold_reg <= #1 IRSRAM_hold;
 	end
 end
 always@(*) begin
 	ir_in_tmp = 0;
+	
 	if(FSM_flag[0]) begin
 		case(curr_state_ir)
 			3'd0: begin
 				ir_in_tmp = 0;
+				IRSRAM_hold = 0;
 			end
 			3'd1: begin
 				for(i = 0; i< `SRAM_NUM; i = i + 1) begin
-					ir_in_tmp[(i+1) * 16 - 1 -: 16] = {data_in_1[(i+1) * 8 - 1 -: 8], 8'd0};
+					ir_in_tmp[(i+1) * 16 - 1 -: 16] = {data_in_1[(i+1) * 8 - 1 -: 8],8'd0};
 				end
+				IRSRAM_hold = 0;
 			end
 			3'd2: begin
 				for(i = 0; i< `SRAM_NUM; i = i + 1) begin
-					ir_in_tmp[(i+1) * 16 - 1 -: 16] = {data_in_1[(i+1) * 8 - 1 -: 8], 8'd0};
+					ir_in_tmp[(i+1) * 16 - 1 -: 16] = {data_in_1[(i+1) * 8 - 1 -: 8],8'd0};
 				end
+				IRSRAM_hold = 0;
 			end
 			3'd3: begin
 				for(i = 0; i< `SRAM_NUM; i = i + 1) begin
-					ir_in_tmp[(i+1) * 16 - 1 -: 16] = {ir_in_tmp_reg[(i+1) * 16 - 1 -: 8], data_in_1[(i+1) * 8 - 1 -: 8]};
+					IRSRAM_hold[(i+1) * 8 - 1 -: 8] = data_in_1[(i+1) * 8 - 1 -: 8];
 				end
 			end
 			3'd4: begin
 				for(i = 0; i < `SRAM_NUM; i = i + 1) begin
-					ir_in_tmp[(i+1) * 16 - 1 -: 16] = {data_in_1_2[(i+1) * 16 - 1 -: 8], data_in_1[(i+1) * 8 - 1 -: 8]};
+					ir_in_tmp[(i+1) * 16 - 1 -: 16] = { IRSRAM_hold_reg[(i+1) * 8 - 1 -: 8],data_in_1[(i+1) * 8 - 1 -: 8]};
+					ir_in_tmp_reg[(i+1) * 8 - 1 -: 8]=Q1_ir[(i+1) * 16 - 1 -: 8];
 				end
+				IRSRAM_hold =0;
 			end
 			3'd5: begin
 				for(i = 0; i < `SRAM_NUM; i = i + 1) begin
-					ir_in_tmp[(i+1) * 16 - 1 -: 16] = {data_in_1_2[(i+1) * 16 - 9 -: 8], data_in_1[(i+1) * 8 - 1 -: 8]};
+					ir_in_tmp[(i+1) * 16 - 1 -: 16] = { ir_in_tmp_reg[(i+1) * 8 - 1 -: 8],data_in_1[(i+1) * 8 - 1 -: 8]};
+					ir_in_tmp_reg[(i+1) * 8 - 1 -: 8]=Q2_ir[(i+1) * 16 - 1 -: 8];
 				end
+				IRSRAM_hold = 0;
 			end
 			3'd6: begin
+				for(i = 0; i < `SRAM_NUM; i = i + 1) begin
+					ir_in_tmp[(i+1) * 16 - 1 -: 16] = {ir_in_tmp_reg[(i+1) * 8 - 1 -: 8],data_in_1[(i+1) * 8 - 1 -: 8]};
+					ir_in_tmp_reg[(i+1) * 8 - 1 -: 8]=Q1_ir[(i+1) * 16 - 1 -: 8];
+				end
+				IRSRAM_hold = 0;
+			end
+			3'd7: begin
 				ir_in_tmp = 0;
+				IRSRAM_hold = 0;
 			end
 		endcase
 	end
 	else begin
 		ir_in_tmp = 0;
+		IRSRAM_hold = 0;
 	end
 end
+
 
 // ============================================
 // D_ir
 // ============================================
+always@(posedge clk or negedge rst_n) begin
+	if(!rst_n) begin
+		D1_ir_reg <= #1 0;
+		D2_ir_reg <= #1 0;
+	end
+	else begin
+		D1_ir_reg <= #1 D1_ir;
+		D2_ir_reg <= #1 D2_ir;
+	end
+end
+
 always@(*) begin
 	if(FSM_flag[0]) begin
 		case(curr_state_ir)
+			3'd0: begin
+				D1_ir = 16'd0;
+				D2_ir = 16'd0;
+			end
+			3'd1: begin
+				D1_ir = ir_in_tmp;
+				D2_ir = D2_ir_reg;
+			end
+			3'd2: begin
+				D1_ir = D1_ir_reg;
+				D2_ir = ir_in_tmp;
+			end
+			3'd3: begin
+				D1_ir = D1_ir_reg;
+				D2_ir = D2_ir_reg;
+			end
+			3'd4: begin
+				D1_ir = D1_ir_reg;
+				D2_ir = ir_in_tmp;
+			end
+			3'd5: begin
+				D1_ir = ir_in_tmp;
+				D2_ir = D2_ir_reg;
+			end
+			3'd6: begin
+				D1_ir = D1_ir_reg;
+				D2_ir = ir_in_tmp;
+			end
+			3'd7: begin
+				D1_ir = 16'd0;
+				D2_ir = 16'd0;
+			end
+
 			default: begin
-				D_ir = ir_in_tmp;
+				D1_ir = 16'd0;
+				D2_ir = 16'd0;
 			end
 		endcase
 	end
 	else begin
-		D_ir = 0;
+		D1_ir = 16'd0;
+		D2_ir = 16'd0;
 	end
 end
+// ============================================
+// A1_ir A2_ir
+// ============================================
+always@(posedge clk or negedge rst_n) begin
+	if(!rst_n) begin
+		A1_ir_reg <= #1 0;
+		A2_ir_reg <= #1 0;
+	end
+	else begin
+		A1_ir_reg <= #1 A1_ir;
+		A2_ir_reg <= #1 A2_ir;
+	end
+end
+always@(*) begin
+	if(FSM_flag[0]) begin
+		case(curr_state_ir)
+			3'd0: begin
+				A1_ir = {`SRAM_NUM * 7{1'b1}};
+				A2_ir = {`SRAM_NUM * 7{1'b1}};
+			end
+			3'd1: begin
+					A1_ir = {`SRAM_NUM{A1_ir_reg+1}};
+					A2_ir = {`SRAM_NUM{A2_ir_reg}};
+			end
+			3'd2: begin
+					A1_ir = {`SRAM_NUM{A1_ir_reg}};
+					A2_ir = {`SRAM_NUM{A2_ir_reg+1}};
+			
+			end
+			3'd3: begin
+					A1_ir = {`SRAM_NUM{A1_ir_reg}};
+					A2_ir = {`SRAM_NUM{A2_ir_reg+1}};
+			end
+			3'd4: begin
+					A1_ir = {`SRAM_NUM{A1_ir_reg}};
+					A2_ir = {`SRAM_NUM{A2_ir_reg}};
+			end
+			3'd5: begin
+					A1_ir = {`SRAM_NUM{A1_ir_reg}};
+					A2_ir = {`SRAM_NUM{A2_ir_reg-1}};
+			end
+			3'd6: begin
+					A1_ir = {`SRAM_NUM{A1_ir_reg-1}};
+					A2_ir = {`SRAM_NUM{A2_ir_reg}};
+			end
+			3'd7: begin
+				A1_ir = {`SRAM_NUM * 7{1'b1}};
+				A2_ir = {`SRAM_NUM * 7{1'b1}};
+			end
+			default: begin
+				A1_ir = {`SRAM_NUM * 7{1'b1}};
+				A2_ir = {`SRAM_NUM * 7{1'b1}};
+			end
+		endcase
+	end
+	else if(FSM_flag == `ACTIVATE_MIDDLE_FSM1)begin
+		case (curr_state_FSM1_middleSection)
+			4'd0:begin
+				A1_ir = {`SRAM_NUM * 7{1'b1}};
+				A2_ir = {`SRAM_NUM * 7{1'b1}};
+			end
+			4'd2: begin
+				A1_ir = {`SRAM_NUM{A1_ir_reg + 1}};
+				A2_ir = {`SRAM_NUM{A2_ir_reg + 1}};
+			end
+			default: begin
+				A1_ir = {`SRAM_NUM * 7{1'b1}};
+				A2_ir = {`SRAM_NUM * 7{1'b1}};
+			end
+		endcase
+	end
+	else begin
+		A1_ir = {`SRAM_NUM * 7{1'b1}};
+		A2_ir = {`SRAM_NUM * 7{1'b1}};
+	end
+end
+
 
 // ============================================
 // CEN_or

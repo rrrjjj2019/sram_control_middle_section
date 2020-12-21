@@ -995,8 +995,7 @@ always@(*) begin
 			end
 		end
 		3'd7:begin
-				next_state_ir = 0;
-			end
+			next_state_ir = 0;
 		end
 		default: begin
 			next_state_ir = 0;
