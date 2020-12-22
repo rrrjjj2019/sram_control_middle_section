@@ -1940,24 +1940,27 @@ always@(*) begin
 				AB_1 = AB_1_reg + 1;
 			end
 			4'd3: begin
-				AB_1 = AB_1_reg + 1;
+				AB_1 = AB_1_reg;
 			end
 			4'd4: begin
 				AB_1 = AB_1_reg + 1;
 			end
 			4'd5: begin
-				AB_1 = AB_1_reg;
+				AB_1 = AB_1_reg + 1;
 			end
 			4'd6: begin
 				AB_1 = AB_1_reg;
 			end
 			4'd7: begin
-				AB_1 = AB_1_reg + 1;
+				AB_1 = AB_1_reg;
 			end
 			4'd8: begin
 				AB_1 = AB_1_reg + 1;
 			end
 			4'd9: begin
+				AB_1 = AB_1_reg + 1;
+			end
+			4'd10: begin
 				AB_1 = AB_1_reg;
 			end
 			default: begin
@@ -2011,6 +2014,46 @@ always@(*) begin
 				data_process = 5;
 			end
 			5'd9: begin
+				data_process = 6;
+			end
+			default: begin
+				data_process = 0;
+			end
+		endcase
+	end
+	else if (FSM_flag == `ACTIVATE_MIDDLE_FSM1) begin
+		case (curr_state_FSM1_middleSection)
+			4'd0: begin
+				data_process = 0;
+			end
+			4'd1: begin
+				data_process = 1;
+			end
+			4'd2: begin
+				data_process = 5;
+			end
+			4'd3: begin
+				data_process = 6;
+			end
+			4'd4: begin
+				data_process = 2;
+			end
+			4'd5: begin
+				data_process = 5;
+			end
+			4'd6: begin
+				data_process = 6;
+			end
+			4'd7: begin
+				data_process = 4;
+			end
+			4'd8: begin
+				data_process = 2;
+			end
+			4'd9: begin
+				data_process = 5;
+			end
+			4'd10: begin
 				data_process = 6;
 			end
 			default: begin

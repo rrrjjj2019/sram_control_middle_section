@@ -57,7 +57,7 @@ wire 	[`SRAM_NUM * 16 - 1 : 0]	Q2_ir;
 
 reg		[99 * 8:0]					fin_name;
 reg		[7 : 0]						data_mem_tmp[0 : `ROW * `COL - 1];
-reg		[7 : 0]						data_mem[0 : `ROW - 1][0 : `COL - 1];
+reg		[7 : 0]						data_mem[0 : 3 * `ROW - 1][0 : `COL - 1];
 
 integer								fp;
 integer								scan_i;
@@ -67,6 +67,8 @@ integer								clk_cycle_count;
 integer								row;
 integer								col;
 
+integer								row_read;
+integer								col_read;
 
 reg [8 - 1 : 0]     counter_1;
 //wire [2:0]                          curr_state_FSM;
@@ -217,7 +219,7 @@ initial begin
 	$fsdbDumpvars(0, middle_section_tb);
 
 	for(i = 0; i < 3; i = i + 1) begin
-		fin_name = $sformatf("../../gen_bench/input/input%0d.txt", i+1);
+		fin_name = $sformatf("./bench/input_256x16/input%0d.txt", i+1);
 		fp = $fopen(fin_name, "r");
 
 		for(row = 0; row < `ROW; row = row + 1)begin
@@ -227,6 +229,9 @@ initial begin
 		end
 	end
 
+	//display_datamem();
+	row_read = 0;
+	col_read = 0;
 	i = 0;
 	row = 0;
 	col = 0;
@@ -252,35 +257,205 @@ end
 // ============================================
 // Simulate data output from DRAM
 // ============================================
-always@(posedge clk)begin
-	clk_cycle_count <= clk_cycle_count + 1;
-	if(controller.curr_state_FSM == 3'd1 || controller.curr_state_FSM == 3'd4)begin		
-		#1 
-		data_in_1 <= {`CHANNEL_OUT{data_mem[row + i * `ROW][col]}};
 
-		if(i != 2)begin
-			i <= i + 1;
+always@(*)begin
+	if(controller.FSM_flag == `ACTIVATE_TOP_FSM0)begin		
+		if(row == `ROW - 1 && col == `COL - 1)begin
+			i = i + 1;
 		end
 		else begin
-			i <= i;
+			i = i;
 		end
 
-		if(row != `ROW - 1) begin
-			row <= row + 1;
+		if(controller.curr_state0 == 0)begin
+			row = 0;
+			col = 0;
+		end
+		else if(controller.curr_state0 == 1)begin
+			row = row + 1;
+			col = col;
+		end
+		else if(controller.curr_state0 == 2) begin
+			row = row - 1;
+			col = col + 1;
+			
+			if(row == 2 - 1 && col == `COL - 1)begin
+				row = row + 1;
+				col = col;
+			end
 		end
 		else begin
-			row <= row;
+			if(row % 2 == 0)begin
+				if(col == 0)begin
+					row = row + 1;
+					col = col;
+				end
+				else begin
+					row = row;
+					col = col - 1;
+				end
+			end
+			else begin
+				if(col == `COL - 1)begin
+					row = row + 1;
+					col = col;
+				end
+				else begin
+					row = row;
+					col = col + 1;
+				end
+			end
+			
+		end
+		
+	end
+	else if(controller.FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
+		if(row == `ROW - 1 && col == `COL - 1)begin
+			i = i + 1;
+		end
+		else begin
+			i = i;
 		end
 
-		if(col != `COL - 1)begin
-			col <= col + 1;
+		if(row % 2 == 1)begin
+			if(col == 0)begin
+				row = row + 1;
+				col = col;
+			end
+			else begin
+				row = row;
+				col = col - 1;
+			end
 		end
 		else begin
-			col <= col;
+			if(col == `COL - 1)begin
+				row = row + 1;
+				col = col;
+			end
+			else begin
+				row = row;
+				col = col + 1;
+			end
 		end
 	end
 end
 
+always@(posedge clk)begin
+	#1
+	clk_cycle_count <= clk_cycle_count + 1;
+	data_in_1 <= {`CHANNEL_OUT{data_mem[row + i * `ROW][col]}};
+end
+
+always@(negedge clk)begin
+	if (controller.FSM_flag == `ACTIVATE_TOP_FSM1) begin
+		#1
+		case (controller.curr_state1)
+			5'd2: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read + 1][col_read]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("TOP, curr_state1 = 2, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read + 1][col_read]} , QB_1[16 - 1 : 0]);
+				end
+				
+				if(col_read == `COL - 1)begin
+					row_read <= row_read + 2;
+					col_read <= col_read;
+				end
+				else begin
+					row_read <= row_read;
+					col_read <= col_read + 1;
+				end
+				
+			end
+			5'd3: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read][col_read - 1]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("TOP, curr_state1 = 3, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read][col_read - 1]} , QB_1[16 - 1 : 0]);
+				end
+				
+				row_read <= row_read;
+				col_read <= col_read - 2;
+			end
+			5'd4: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read][col_read - 1]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("TOP, curr_state1 = 4, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read][col_read - 1]} , QB_1[16 - 1 : 0]);
+				end
+				
+				if(col_read == 1)begin
+					row_read <= row_read + 1;
+					col_read <= col_read - 1;
+				end
+				else begin
+					row_read <= row_read;
+					col_read <= col_read - 2;
+				end
+				
+			end
+			5'd7: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("TOP, curr_state1 = 7, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]} , QB_1[16 - 1 : 0]);
+				end
+				
+				row_read <= row_read;
+				col_read <= col_read + 2;
+				
+			end
+			5'd8: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("TOP, curr_state1 = 8, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]} , QB_1[16 - 1 : 0]);
+				end
+				
+				if(col_read == `COL - 2)begin
+					row_read <= row_read + 1;
+					col_read <= col_read + 1;
+				end
+				else begin
+					row_read <= row_read;
+					col_read <= col_read + 2;
+				end
+			end
+			default: begin
+				row_read <= row_read;
+				col_read <= col_read;
+			end
+		endcase
+	end
+	// else if (controller.FSM_flag == `ACTIVATE_MIDDLE_FSM1) begin
+		
+	// end
+end
+
 always #`HALF_CLK clk = ~clk;
+
+
+task display_datamem();
+	begin
+		for(i = 0; i < 3; i = i + 1) begin
+			$display("=============== i = %d =============", i);
+			for(row = 0; row < `ROW; row = row + 1)begin
+				for(col = 0; col < `COL; col = col + 1)begin
+					$display("%0h", data_mem[row + i * `ROW][col]);
+				end
+			end
+		end
+	end
+endtask
 
 endmodule
