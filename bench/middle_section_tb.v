@@ -260,32 +260,69 @@ end
 
 always@(*)begin
 	if(controller.FSM_flag == `ACTIVATE_TOP_FSM0)begin		
-		if(row == `ROW - 1 && col == `COL - 1)begin
-			i = i + 1;
-		end
-		else begin
-			i = i;
-		end
-
 		if(controller.curr_state0 == 0)begin
 			row = 0;
 			col = 0;
 		end
 		else if(controller.curr_state0 == 1)begin
-			row = row + 1;
-			col = col;
-		end
-		else if(controller.curr_state0 == 2) begin
-			row = row - 1;
-			col = col + 1;
-			
-			if(row == 2 - 1 && col == `COL - 1)begin
+			if(row <= 2 - 1)begin
 				row = row + 1;
 				col = col;
 			end
+			else begin
+				if(row % 2 == 0)begin
+					row = row;
+					col = col - 1;
+				end
+				else begin
+					row = row;
+					col = col + 1;
+				end
+			end
+		end
+		else if(controller.curr_state0 == 2) begin
+			if(row <= 2 - 1)begin
+				if(row == 2 - 1 && col == `COL - 1)begin
+					row = row + 1;
+					col = col;
+				end
+				else begin
+					row = row - 1;
+					col = col + 1;
+				end
+			end
+			else begin
+				if(row % 2 == 0)begin
+					if(col == 0)begin
+						row = row + 1;
+						col = col;
+					end
+					else begin
+						row = row;
+						col = col - 1;
+					end
+				end
+				else begin
+					if(col == `COL - 1)begin
+						row = row + 1;
+						col = col;
+					end
+					else begin
+						row = row;
+						col = col + 1;
+					end
+				end
+			end
+		end
+		
+	end
+	else if(controller.FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
+		if(controller.curr_state_FSM0_middleSection == 0)begin
+			row = row;
+			col = 0;
 		end
 		else begin
-			if(row % 2 == 0)begin
+			if(row % 2 == 1)begin
 				if(col == 0)begin
 					row = row + 1;
 					col = col;
@@ -305,45 +342,15 @@ always@(*)begin
 					col = col + 1;
 				end
 			end
-			
 		end
 		
-	end
-	else if(controller.FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
-		if(row == `ROW - 1 && col == `COL - 1)begin
-			i = i + 1;
-		end
-		else begin
-			i = i;
-		end
-
-		if(row % 2 == 1)begin
-			if(col == 0)begin
-				row = row + 1;
-				col = col;
-			end
-			else begin
-				row = row;
-				col = col - 1;
-			end
-		end
-		else begin
-			if(col == `COL - 1)begin
-				row = row + 1;
-				col = col;
-			end
-			else begin
-				row = row;
-				col = col + 1;
-			end
-		end
 	end
 end
 
 always@(posedge clk)begin
 	#1
 	clk_cycle_count <= clk_cycle_count + 1;
-	data_in_1 <= {`CHANNEL_OUT{data_mem[row + i * `ROW][col]}};
+	data_in_1 <= {`CHANNEL_OUT{data_mem[row][col]}};
 end
 
 always@(negedge clk)begin
@@ -423,6 +430,136 @@ always@(negedge clk)begin
 				end
 				
 				if(col_read == `COL - 2)begin
+					if(row_read != 0 && row_read % 15 == 0)begin
+						row_read <= row_read + 1;
+						col_read <= 0;
+					end
+					else begin
+						row_read <= row_read + 1;
+						col_read <= col_read + 1;
+					end
+					
+				end
+				else begin
+					row_read <= row_read;
+					col_read <= col_read + 2;
+				end
+			end
+			default: begin
+				row_read <= row_read;
+				col_read <= col_read;
+			end
+		endcase
+	end
+	else if (controller.FSM_flag == `ACTIVATE_MIDDLE_FSM1) begin
+		#1
+		case (controller.curr_state_FSM1_middleSection)
+			4'd0: begin
+				row_read <= row_read;
+				col_read <= 0;
+			end
+			4'd1:begin
+				row_read <= row_read;
+				col_read <= col_read;
+			end
+			4'd2: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("MIDDLE, curr_state_FSM1_middleSection = 2, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]} , QB_1[16 - 1 : 0]);
+				end
+				
+				if(Q2_ir[16 - 1: 0] == {data_mem[row_read - 2][col_read], data_mem[row_read - 1][col_read]})begin
+					$display("============== CORRECT (IRSRAM) =============");
+				end
+				else begin
+					$display("MIDDLE(IRSRAM), curr_state_FSM1_middleSection = 2, ERROR : row = %0d, col = %0d, data_mem = %0h, Q2_ir(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read - 2][col_read], data_mem[row_read - 1][col_read]} , Q2_ir[16 - 1 : 0]);
+				end
+
+				if(col_read == `COL - 2)begin
+					row_read <= row_read + 1;
+					col_read <= col_read + 1;
+				end
+				else begin
+					row_read <= row_read;
+					col_read <= col_read + 2;
+				end
+			end
+			4'd3: begin
+				if(col_read == `COL - 1)begin
+					if(Q1_ir[16 - 1: 0] == {data_mem[row_read - 1 - 2][col_read], data_mem[row_read - 1 - 1][col_read]})begin
+						$display("============== CORRECT (IRSRAM) =============");
+					end
+					else begin
+						$display("MIDDLE(IRSRAM), curr_state_FSM1_middleSection = 3, ERROR : row = %0d, col = %0d, data_mem = %0h, Q1_ir(16bit) = %0h", 
+								row_read, col_read, {data_mem[row_read - 1 - 2][col_read], data_mem[row_read - 1 - 1][col_read]} , Q1_ir[16 - 1 : 0]);
+					end
+				end
+				else begin
+					if(Q1_ir[16 - 1: 0] == {data_mem[row_read - 2][col_read - 1], data_mem[row_read - 1][col_read - 1]})begin
+						$display("============== CORRECT (IRSRAM) =============");
+					end
+					else begin
+						$display("MIDDLE(IRSRAM), curr_state_FSM1_middleSection = 3, ERROR : row = %0d, col = %0d, data_mem = %0h, Q1_ir(16bit) = %0h", 
+								row_read, col_read, {data_mem[row_read - 2][col_read - 1], data_mem[row_read - 1][col_read - 1]} , Q1_ir[16 - 1 : 0]);
+					end
+				end
+			end
+			4'd4: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read][col_read - 1]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("MIDDLE, curr_state_FSM1_middleSection = 4, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read][col_read - 1]} , QB_1[16 - 1 : 0]);
+				end
+
+				row_read <= row_read;
+				col_read <= col_read - 2;
+			end
+			4'd5: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read][col_read - 1]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("MIDDLE, curr_state_FSM1_middleSection = 5, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read][col_read - 1]} , QB_1[16 - 1 : 0]);
+				end
+				
+				if(col_read == 1)begin
+					row_read <= row_read + 1;
+					col_read <= col_read - 1;
+				end
+				else begin
+					row_read <= row_read;
+					col_read <= col_read - 2;
+				end
+			end
+			4'd8: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("MIDDLE, curr_state_FSM1_middleSection = 8, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]} , QB_1[16 - 1 : 0]);
+				end
+				
+				row_read <= row_read;
+				col_read <= col_read + 2;
+			end
+			4'd9: begin
+				if(QB_1[16 - 1 : 0] == {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]})begin
+					$display("============== CORRECT =============");
+				end
+				else begin
+					$display("MIDDLE, curr_state_FSM1_middleSection = 9, ERROR : row = %0d, col = %0d, data_mem = %0h, QB_1(16bit) = %0h", 
+							row_read, col_read, {data_mem[row_read][col_read], data_mem[row_read][col_read + 1]} , QB_1[16 - 1 : 0]);
+				end
+				
+				if(col_read == `COL - 2)begin
 					row_read <= row_read + 1;
 					col_read <= col_read + 1;
 				end
@@ -437,9 +574,6 @@ always@(negedge clk)begin
 			end
 		endcase
 	end
-	// else if (controller.FSM_flag == `ACTIVATE_MIDDLE_FSM1) begin
-		
-	// end
 end
 
 always #`HALF_CLK clk = ~clk;
