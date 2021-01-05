@@ -190,8 +190,8 @@ reg     [1 : 0]                     curr_state_FSM0_middleSection;
 reg     [1 : 0]						next_state_FSM0_middleSection;
 
 reg                             	start_cnt_FSM1_middleSection;
-reg 	[12 - 1 : 0]                pxl_cnt_FSM1_middleSection;
-reg     [8 - 1 : 0]					col_cnt_FSM1_middleSection;
+reg 	[13 - 1 : 0]                pxl_cnt_FSM1_middleSection;
+reg     [9 - 1 : 0]					col_cnt_FSM1_middleSection;
 reg     [4 - 1 : 0]					row_cnt_FSM1_middleSection;
 reg     [4 - 1 : 0]                 curr_state_FSM1_middleSection;
 reg     [4 - 1 : 0]					next_state_FSM1_middleSection;
@@ -372,7 +372,7 @@ always@(*) begin
 			end
 		end
 		3'd5: begin
-			if(pxl_cnt_FSM1_middleSection == `COL + 2 + `COL * (`ROW - 2) - 1) begin
+			if(pxl_cnt_FSM1_middleSection == `COL + 2 + `COL * (`ROW - 1) - 1) begin
 				next_state_FSM = 3;
 			end
 			else begin
@@ -477,114 +477,6 @@ end
 // Read data from FSRAM1、IRSRAM to CCM
 // ============================================
 
-always@(posedge clk or negedge rst_n) begin
-	if(!rst_n) begin
-		start_cnt_FSM1_middleSection <= #1 0;
-	end
-	else if(FSM_flag == `ACTIVATE_MIDDLE_FSM1) begin
-		start_cnt_FSM1_middleSection <= #1 1;
-	end
-	else begin
-		start_cnt_FSM1_middleSection <= #1 0;
-	end
-end
-
-always@(posedge clk or negedge rst_n) begin
-	if(!rst_n) begin
-		pxl_cnt_FSM1_middleSection <= #1 0;
-	end
-	else if(start_cnt_FSM1_middleSection) begin
-		pxl_cnt_FSM1_middleSection <= #1 pxl_cnt_FSM1_middleSection + 1;
-	end
-	else begin
-		pxl_cnt_FSM1_middleSection <= #1 0;
-	end
-end
-
-always@(posedge clk or negedge rst_n) begin
-	if(!rst_n) begin
-		row_cnt_FSM1_middleSection <= #1 0;
-	end
-	else if(start_cnt_FSM1_middleSection) begin
-		if(col_cnt_FSM1_middleSection == `COL - 1) begin
-			row_cnt_FSM1_middleSection <= #1 row_cnt_FSM1_middleSection + 1;
-		end
-		else begin
-			row_cnt_FSM1_middleSection <= #1 row_cnt_FSM1_middleSection;
-		end
-	end
-	else begin
-		row_cnt_FSM1_middleSection <= #1 0;
-	end
-end
-
-
-always@(posedge clk or negedge rst_n) begin
-	if(!rst_n) begin
-		col_cnt_FSM1_middleSection <= #1 0;
-	end
-	else if(start_cnt_FSM1_middleSection) begin
-		if(col_cnt_FSM1_middleSection == `COL - 1) begin
-			col_cnt_FSM1_middleSection <= #1 0;
-		end
-		else begin
-			col_cnt_FSM1_middleSection <= #1 col_cnt_FSM1_middleSection + 1;
-		end
-	end
-	else begin
-		col_cnt_FSM1_middleSection <= #1 0;
-	end
-end
-
-always@(posedge clk or negedge rst_n) begin
-	if(!rst_n) begin
-		start_shift_FSM1_middleSection <= #1 0;
-	end
-	else if(FSM_flag == `ACTIVATE_MIDDLE_FSM1) begin
-		case(curr_state_FSM1_middleSection) //synopsys parallel_case
-			4'd0: begin
-				start_shift_FSM1_middleSection <= #1 0;
-			end
-			4'd1: begin
-				start_shift_FSM1_middleSection <= #1 start_shift_FSM1_middleSection;
-			end
-			4'd3: begin
-				if(pxl_cnt_FSM1_middleSection == `COL) begin
-					start_shift_FSM1_middleSection <= #1 1;
-				end
-				else begin
-					start_shift_FSM1_middleSection <= #1 0;
-				end
-			end
-			default: begin
-				start_shift_FSM1_middleSection <= #1 start_shift_FSM1_middleSection;
-			end
-		endcase
-	end
-	else begin
-		start_shift_FSM1_middleSection <= #1 0;
-	end
-end
-
-always@(posedge clk or negedge rst_n) begin
-	if(!rst_n) begin
-		shift_cnt_FSM1_middleSection <= #1 0;
-	end
-	else begin
-		if(start_shift_FSM1_middleSection) begin
-			if(shift_cnt_FSM1_middleSection == `COL - 1) begin
-				shift_cnt_FSM1_middleSection <= #1 0;
-			end
-			else begin
-				shift_cnt_FSM1_middleSection <= #1 shift_cnt_FSM1_middleSection + 1;
-			end
-		end
-		else begin
-			shift_cnt_FSM1_middleSection <= #1 0;
-		end
-	end
-	
-end
 
 
 always@(posedge clk or negedge rst_n) begin
@@ -606,7 +498,7 @@ always@(*) begin
 			next_state_FSM1_middleSection = 1;
 		end
 		4'd1: begin
-			if(row_cnt_FSM1_middleSection == 1) begin
+			if(col_cnt_FSM1_middleSection == `COL) begin
 				next_state_FSM1_middleSection = 4;
 			end
 			else begin
@@ -617,7 +509,7 @@ always@(*) begin
 			next_state_FSM1_middleSection = 3;
 		end
 		4'd3: begin
-			if(pxl_cnt_FSM1_middleSection == `COL) begin
+			if(col_cnt_FSM1_middleSection == `COL - 1) begin
 				next_state_FSM1_middleSection = 1;
 			end
 			else begin
@@ -631,7 +523,7 @@ always@(*) begin
 			next_state_FSM1_middleSection = 6;
 		end
 		4'd6: begin
-			if(shift_cnt_FSM1_middleSection == `COL - 1) begin
+			if(col_cnt_FSM1_middleSection == 2) begin
 				next_state_FSM1_middleSection = 7;
 			end
 			else begin
@@ -639,14 +531,11 @@ always@(*) begin
 			end
 		end
 		4'd7: begin
-			if(pxl_cnt_FSM1_middleSection >= `COL + 2 + `COL * (`ROW - 2) - 1) begin
-				next_state_FSM1_middleSection = 11;
-			end
-			else if(row_cnt_FSM1_middleSection[0]) begin
-				next_state_FSM1_middleSection = 4;
+			if(col_cnt_FSM1_middleSection == 1) begin
+				next_state_FSM1_middleSection = 8;
 			end
 			else begin
-				next_state_FSM1_middleSection = 8;
+				next_state_FSM1_middleSection = 4;
 			end
 		end
 		4'd8: begin
@@ -656,13 +545,85 @@ always@(*) begin
 			next_state_FSM1_middleSection = 10;
 		end
 		4'd10: begin
-			next_state_FSM1_middleSection = 7;
+			if(col_cnt_FSM1_middleSection == `COL - 1)begin
+				next_state_FSM1_middleSection = 7;
+			end
+			else begin
+				next_state_FSM1_middleSection = 9;
+			end
 		end
 		default: begin
 			next_state_FSM1_middleSection = 0;
 		end
 	endcase
 end
+
+always@(posedge clk or negedge rst_n)begin
+	if(!rst_n)begin
+		pxl_cnt_FSM1_middleSection <= #1 0;
+	end
+	else begin
+		if(FSM_flag == `ACTIVATE_MIDDLE_FSM1)begin
+			pxl_cnt_FSM1_middleSection <= #1 pxl_cnt_FSM1_middleSection + 1;
+		end
+		else begin
+			pxl_cnt_FSM1_middleSection <= #1 0;
+		end
+	end
+end
+
+
+always@(*) begin
+	case(curr_state_FSM1_middleSection) //synopsys parallel_case
+		4'd0: begin
+			col_cnt_FSM1_middleSection = 0;
+		end
+		4'd1: begin
+			col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection;
+		end
+		4'd2: begin
+			col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection + 1;
+		end
+		4'd3: begin
+			col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection + 1;
+		end
+		4'd4: begin
+			col_cnt_FSM1_middleSection = `COL;
+		end
+		4'd5: begin
+			if(col_cnt_FSM1_middleSection == `COL)begin
+				col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection - 2;
+			end
+			else begin
+				col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection - 1;
+			end
+		end
+		4'd6: begin
+			col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection - 1;
+		end
+		4'd7: begin
+			col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection;
+		end
+		4'd8: begin
+			col_cnt_FSM1_middleSection = 1;
+		end
+		4'd9: begin
+			if(col_cnt_FSM1_middleSection == 1)begin
+				col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection + 2;
+			end
+			else begin
+				col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection + 1;
+			end
+		end
+		4'd10: begin
+			col_cnt_FSM1_middleSection = col_cnt_FSM1_middleSection + 1;
+		end
+		default: begin
+			col_cnt_FSM1_middleSection = 0;
+		end
+	endcase
+end
+
 
 
 // ============================================
@@ -1240,11 +1201,13 @@ always@(posedge clk or negedge rst_n) begin
 	if(!rst_n) begin
 		curr_state_ir <= #1 0;
 	end
-	else if(FSM_flag[0]) begin
-		curr_state_ir <= #1 next_state_ir;
-	end
 	else begin
-		curr_state_ir <= #1 curr_state_ir;
+		if(FSM_flag[0]) begin
+			curr_state_ir <= #1 next_state_ir;
+		end
+		else begin
+			curr_state_ir <= #1 curr_state_ir;
+		end
 	end
 end
 

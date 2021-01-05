@@ -479,33 +479,25 @@ always@(negedge clk)begin
 							row_read, col_read, {data_mem[row_read - 2][col_read], data_mem[row_read - 1][col_read]} , Q2_ir[16 - 1 : 0]);
 				end
 
-				if(col_read == `COL - 2)begin
+				row_read <= row_read;
+				col_read <= col_read + 1;
+			end
+			4'd3: begin
+				if(Q1_ir[16 - 1: 0] == {data_mem[row_read - 2][col_read], data_mem[row_read - 1][col_read]})begin
+					$display("============== CORRECT (IRSRAM) =============");
+				end
+				else begin
+					$display("MIDDLE(IRSRAM), curr_state_FSM1_middleSection = 3, ERROR : row = %0d, col = %0d, data_mem = %0h, Q1_ir(16bit) = %0h", 
+							row_read, col_read,  {data_mem[row_read - 2][col_read], data_mem[row_read - 1][col_read]} , Q1_ir[16 - 1 : 0]);
+				end
+
+				if(col_read == `COL - 1)begin
 					row_read <= row_read + 1;
-					col_read <= col_read + 1;
+					col_read <= col_read;
 				end
 				else begin
 					row_read <= row_read;
-					col_read <= col_read + 2;
-				end
-			end
-			4'd3: begin
-				if(col_read == `COL - 1)begin
-					if(Q1_ir[16 - 1: 0] == {data_mem[row_read - 1 - 2][col_read], data_mem[row_read - 1 - 1][col_read]})begin
-						$display("============== CORRECT (IRSRAM) =============");
-					end
-					else begin
-						$display("MIDDLE(IRSRAM), curr_state_FSM1_middleSection = 3, ERROR : row = %0d, col = %0d, data_mem = %0h, Q1_ir(16bit) = %0h", 
-								row_read, col_read, {data_mem[row_read - 1 - 2][col_read], data_mem[row_read - 1 - 1][col_read]} , Q1_ir[16 - 1 : 0]);
-					end
-				end
-				else begin
-					if(Q1_ir[16 - 1: 0] == {data_mem[row_read - 2][col_read - 1], data_mem[row_read - 1][col_read - 1]})begin
-						$display("============== CORRECT (IRSRAM) =============");
-					end
-					else begin
-						$display("MIDDLE(IRSRAM), curr_state_FSM1_middleSection = 3, ERROR : row = %0d, col = %0d, data_mem = %0h, Q1_ir(16bit) = %0h", 
-								row_read, col_read, {data_mem[row_read - 2][col_read - 1], data_mem[row_read - 1][col_read - 1]} , Q1_ir[16 - 1 : 0]);
-					end
+					col_read <= col_read + 1;
 				end
 			end
 			4'd4: begin
