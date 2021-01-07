@@ -1202,7 +1202,7 @@ always@(posedge clk or negedge rst_n) begin
 		curr_state_ir <= #1 0;
 	end
 	else begin
-		if(FSM_flag[0]) begin
+		if(FSM_flag[0] || FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
 			curr_state_ir <= #1 next_state_ir;
 		end
 		else begin
@@ -1495,7 +1495,7 @@ end
 // RENB_1
 // ============================================
 always@(*) begin
-	if(FSM_flag[0]) begin
+	if(FSM_flag[0] || FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
 		case(curr_state_ir)
 			3'd0: begin
 				RENB_1 = ~{32{1'b1}};
@@ -1851,7 +1851,7 @@ always@(posedge clk or negedge rst_n) begin
 end
 always@(*) begin
 	AB_1 = {12{1'b1}};
-	if(FSM_flag[0]) begin
+	if(FSM_flag[0] || FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
 		case(curr_state_ir)
 			3'd0: begin
 				AB_1 = (`COL - 1) + (`ROW - 2) * 2 + 1;
@@ -2555,7 +2555,7 @@ end
 // CEN_ir
 // ============================================
 always@(*) begin
-	if(FSM_flag[0]) begin
+	if(FSM_flag[0] || FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
 		case(curr_state_ir)
 			3'd0: begin
 				CEN1_ir = ~1'b1;
@@ -2601,7 +2601,7 @@ end
 // WEN_ir
 // ============================================
 always@(*) begin
-	if(FSM_flag[0]) begin
+	if(FSM_flag[0] || FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
 		case(curr_state_ir)
 			3'd0: begin
 				WEN1_ir = ~{32{1'b0}};
@@ -2662,7 +2662,7 @@ end
 always@(*) begin
 	ir_in_tmp = 0;
 	
-	if(FSM_flag[0]) begin
+	if(FSM_flag[0] || FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
 		case(curr_state_ir)
 			3'd0: begin
 				ir_in_tmp = 0;
@@ -2734,7 +2734,7 @@ always@(posedge clk or negedge rst_n) begin
 end
 
 always@(*) begin
-	if(FSM_flag[0]) begin
+	if(FSM_flag[0] || FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
 		case(curr_state_ir)
 			3'd0: begin
 				D1_ir = 16'd0;
@@ -2794,7 +2794,7 @@ always@(posedge clk or negedge rst_n) begin
 	end
 end
 always@(*) begin
-	if(FSM_flag[0]) begin
+	if(FSM_flag[0] || FSM_flag == `ACTIVATE_MIDDLE_FSM0) begin
 		case(curr_state_ir)
 			3'd0: begin
 				A1_ir = {`SRAM_NUM * 7{1'b1}};

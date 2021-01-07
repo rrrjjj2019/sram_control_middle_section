@@ -250,9 +250,9 @@ initial begin
 	
 end
 
-initial begin
-	#500000  $finish;
-end
+// initial begin
+// 	#500000  $finish;
+// end
 
 // ============================================
 // Simulate data output from DRAM
@@ -351,6 +351,10 @@ always@(posedge clk)begin
 	#1
 	clk_cycle_count <= clk_cycle_count + 1;
 	data_in_1 <= {`CHANNEL_OUT{data_mem[row][col]}};
+
+	if(row_read >= `ROW * 3)begin
+		$finish;
+	end
 end
 
 always@(negedge clk)begin
